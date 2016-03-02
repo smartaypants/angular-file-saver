@@ -83,9 +83,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	module.exports = function FileSaver(Blob, SaveAs, FileSaverUtils) {
 
-	  function save(blob, filename, disableAutoBOM) {
+	  function save(blob, filename, disableAutoBOM, failureCallback) {
 	    try {
-	      SaveAs(blob, filename, disableAutoBOM);
+	      SaveAs(blob, filename, disableAutoBOM, failureCallback);
 	    } catch(err) {
 	      FileSaverUtils.handleErrors(err.message);
 	    }
@@ -102,12 +102,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    * @param {Blob} data A Blob instance
 	    * @param {Object} filename Custom filename (extension is optional)
 	    * @param {Boolean} disableAutoBOM Disable automatically provided Unicode
+	    * @param {function} failureCallback Callback function that is called when file cannot be saved (Safari)
 	    * text encoding hints
 	    *
 	    * @return {Undefined}
 	    */
 
-	    saveAs: function(data, filename, disableAutoBOM) {
+	    saveAs: function(data, filename, disableAutoBOM, failureCallback) {
 
 	      if (!FileSaverUtils.isBlobInstance(data)) {
 	        FileSaverUtils.handleErrors('Data argument should be a blob instance');
@@ -117,7 +118,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        FileSaverUtils.handleErrors('Filename argument should be a string');
 	      }
 
-	      return save(data, filename, disableAutoBOM);
+	      return save(data, filename, disableAutoBOM, failureCallback);
 	    }
 	  };
 	};

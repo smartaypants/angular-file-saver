@@ -82,9 +82,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	module.exports = function FileSaver(Blob, SaveAs, FileSaverUtils) {
 
-	  function save(blob, filename, disableAutoBOM) {
+	  function save(blob, filename, disableAutoBOM, failureCallback) {
 	    try {
-	      SaveAs(blob, filename, disableAutoBOM);
+	      SaveAs(blob, filename, disableAutoBOM, failureCallback);
 	    } catch(err) {
 	      FileSaverUtils.handleErrors(err.message);
 	    }
@@ -101,12 +101,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    * @param {Blob} data A Blob instance
 	    * @param {Object} filename Custom filename (extension is optional)
 	    * @param {Boolean} disableAutoBOM Disable automatically provided Unicode
+	    * @param {function} failureCallback Callback function that is called when file cannot be saved (Safari)
 	    * text encoding hints
 	    *
 	    * @return {Undefined}
 	    */
 
-	    saveAs: function(data, filename, disableAutoBOM) {
+	    saveAs: function(data, filename, disableAutoBOM, failureCallback) {
 
 	      if (!FileSaverUtils.isBlobInstance(data)) {
 	        FileSaverUtils.handleErrors('Data argument should be a blob instance');
@@ -116,7 +117,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        FileSaverUtils.handleErrors('Filename argument should be a string');
 	      }
 
-	      return save(data, filename, disableAutoBOM);
+	      return save(data, filename, disableAutoBOM, failureCallback);
 	    }
 	  };
 	};
@@ -472,7 +473,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 				return blob;
 			}
-			, FileSaver = function(blob, name, no_auto_bom) {
+			, FileSaver = function(blob, name, no_auto_bom, failureCallback) {
 				if (!no_auto_bom) {
 					blob = auto_bom(blob);
 				}
@@ -505,18 +506,26 @@ return /******/ (function(modules) { // webpackBootstrap
 						if (blob_changed || !object_url) {
 							object_url = get_URL().createObjectURL(blob);
 						}
-						if (target_view) {
-							target_view.location.href = object_url;
-						} else {
-							var new_tab = view.open(object_url, "_blank");
-							if (new_tab == undefined && is_safari) {
-								//Apple do not allow window.open, see http://bit.ly/1kZffRI
-								view.location.href = object_url
+						// if url callback specified then assume caller will handle download rather than changing the current window location.
+						if (failureCallback) {
+							failureCallback(object_url);
+						}
+						else {
+							if (target_view) {
+								target_view.location.href = object_url;
+							} else {
+								var new_tab = view.open(object_url, "_blank");
+								if (new_tab == undefined && is_safari) {
+									//Apple do not allow window.open, see http://bit.ly/1kZffRI
+									view.location.href = object_url
+								}
 							}
 						}
 						filesaver.readyState = filesaver.DONE;
 						dispatch_all();
-						revoke(object_url);
+						if (!failureCallback) { // don't revoke if the object_url is passed into callback.
+							revoke(object_url);
+						}
 					}
 					, abortable = function(func) {
 						return function() {
@@ -534,9 +543,9 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 				if (can_use_save_link) {
 					object_url = get_URL().createObjectURL(blob);
-					save_link.href = object_url;
-					save_link.download = name;
 					setTimeout(function() {
+						save_link.href = object_url;
+						save_link.download = name;
 						click(save_link);
 						dispatch_all();
 						revoke(object_url);
@@ -612,8 +621,8 @@ return /******/ (function(modules) { // webpackBootstrap
 				}), fs_error);
 			}
 			, FS_proto = FileSaver.prototype
-			, saveAs = function(blob, name, no_auto_bom) {
-				return new FileSaver(blob, name, no_auto_bom);
+			, saveAs = function(blob, name, no_auto_bom, failureCallback) {
+				return new FileSaver(blob, name, no_auto_bom, failureCallback);
 			}
 		;
 		// IE 10+ (native saveAs)
